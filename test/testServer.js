@@ -1,29 +1,11 @@
 var Seneca = require('seneca')
 
-var seneca = Seneca()
+var seneca = Seneca({ log: 'silent' })
 
-seneca.use(require('..'), conf())
+seneca.add({ a: 1 }, function (input, done) {
+  console.log(input)
+  done(null, { b: 1, port: process.argv[2] })
+})
 
-seneca.listen({port: 10100})
-
-function conf () {
-  return {
-    services: [
-      {
-        pattern: { a: '1' },
-        locations: [
-          {
-            host: 'localhost',
-            port: '10201',
-            spec: 'http'
-          },
-          {
-            host: 'localhost',
-            port: '10202',
-            spec: 'http'
-          }
-        ]
-      }
-    ]
-  }
-}
+// eg. run with node ./test.js port
+seneca.listen({ port: process.argv[2] })

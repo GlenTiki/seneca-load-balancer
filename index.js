@@ -105,7 +105,7 @@ module.exports = function (options) {
 // var config = {
 //   services: [
 //     {
-//       pattern: ''||{},
+//       pattern: ''||{}, // use your seneca pattern here
 //       locations: [
 //         {
 //           host: '',

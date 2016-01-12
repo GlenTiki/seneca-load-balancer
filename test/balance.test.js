@@ -14,7 +14,7 @@ var Balancer = require('..')
 
 describe('balance test', function () {
   it('passed', function (done) {
-    var seneca = Seneca()
+    var seneca = Seneca({ log: 'silent' })
 
     seneca
       .use(Balancer)
