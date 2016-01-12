@@ -8,15 +8,20 @@ var describe = lab.describe
 var it = lab.it
 var expect = Code.expect
 
+// var exec = require('child_process').exec
+
 var Balancer = require('..')
 
-describe('stub', function () {
+describe('balance test', function () {
   it('passed', function (done) {
     var seneca = Seneca()
+
     seneca
       .use(Balancer)
-      .client()
+      .listen({ host: 'localhost', port: 10101 })
+
     expect(true).to.equal(true)
+
     done()
   })
 })
