@@ -1,6 +1,6 @@
 {
   "name": "seneca-load-balancer",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A seneca service that will allow you to easily manage multiple running services with the same patterns",
   "main": "index.js",
   "scripts": {
