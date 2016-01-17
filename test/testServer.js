@@ -1,6 +1,6 @@
 var Seneca = require('seneca')
 
-var seneca = Seneca({ log: 'silent' })
+var seneca = Seneca()
 
 seneca.add({ a: 1 }, function (input, done) {
   console.log(input)

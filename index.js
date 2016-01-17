@@ -2,6 +2,7 @@ var _ = require('underscore')
 var Request = require('request')
 var Jsonic = require('jsonic')
 var Patrun = require('patrun')
+var Net = require('net')
 
 module.exports = function (options) {
   var seneca = this
@@ -24,7 +25,46 @@ module.exports = function (options) {
   }
 
   var internals = {
-    pr: Patrun()
+    pr: Patrun(),
+    validifyPath: function (path) {
+      path = path || '/act'
+      if (path.indexOf(' ') > -1) {
+        seneca.log.warn(`Invalid path (${path}) provided. Stripping whitespace.`)
+        path = path.trim()
+      }
+      if (path.indexOf('/') === 0) {
+        return path
+      }
+      seneca.log.warn(`Invalid path (${path}) provided. Prepending '/'.`)
+      return `/${path}`
+    },
+    validifySpec: function (spec) {
+      spec = spec || 'http'
+      switch (spec) {
+        case 'http':
+        case 'tcp':
+        case 'https':
+          return spec
+        default:
+          seneca.log.warn(`Invalid transport spec (${spec}) provided. defaulting to http`)
+          return 'http'
+      }
+    },
+    tcpConnectToServer: function (loc) {
+      loc.client = Net.connect({ host: loc.host, port: loc.port }, () => {
+        loc.retryAttempt = 0
+      })
+
+      loc.client.on('error', () => {
+        if (loc.retryAttempt < 5) {
+          seneca.log.warn(`Unable to continue to stay client to ${loc.host}:${loc.port}, retrying...`)
+          internals.tcpConnectToServer(loc)
+        }
+        else {
+          seneca.log.error(`Unable to continue to stay client to ${loc.host}:${loc.port}. Connection Unavailable`)
+        }
+      })
+    }
   }
 
   // this reduction algorithm is only ran on startup
@@ -33,6 +73,18 @@ module.exports = function (options) {
     var o = options.services[i]
     o.pattern = Jsonic(o.pattern)
     o.locValue = 0
+
+    o.locations.forEach(function (loc) {
+      loc.host = loc.host || 'localhost'
+      loc.port = loc.port || 10101
+      loc.path = internals.validifyPath(loc.path)
+      loc.spec = internals.validifySpec(loc.spec)
+      loc.numActsActive = 0
+
+      if (loc.spec === 'tcp') {
+        internals.tcpConnectToServer(loc)
+      }
+    })
 
     var j = _.pluck(tempy, 'pattern').indexOf(o.pattern)
     if (j === -1) {
@@ -57,6 +109,7 @@ module.exports = function (options) {
 
   function routeMessages (args, done) {
     var pattern = args
+
     var match = options.services[args.route]
 
     // right now we do a naive round robin with routing messages
@@ -81,12 +134,7 @@ module.exports = function (options) {
   }
 
   function sendHttpAct (location, pattern, done) {
-    delete pattern.transport$
-    delete pattern.ungate$
-    delete pattern.tx$
-    delete pattern.meta$
-    delete pattern.route
-    var loc = location.spec + '://' + location.host + ':' + location.port + '/act'
+    var loc = location.spec + '://' + location.host + ':' + location.port + location.path
     Request.post({ url: loc, json: pattern }, function (err, res, body) {
       done(err, body)
     })
@@ -94,6 +142,7 @@ module.exports = function (options) {
 
   function sendTcpAct (location, pattern, done) {
     // right now... do nothing
+
     done(null, pattern)
   }
 
@@ -108,8 +157,9 @@ module.exports = function (options) {
 //       pattern: ''||{}, // use your seneca pattern here
 //       locations: [
 //         {
-//           host: '',
-//           port: '',
+//           host: 'localhost',
+//           port: '10101',
+//           path: '/act',
 //           spec: 'tcp' || 'http'
 //         }
 //       ]
